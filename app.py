@@ -460,7 +460,39 @@ def run_scanner():
 # OPENAI AI ANALYSIS
 # =========================================================
 
+# =========================================================
+# AI ANALYSIS CACHE
+# =========================================================
+
+import time
+
+AI_CACHE = ""
+AI_CACHE_TIME = 0
+
+AI_CACHE_SECONDS = 600
+
+
 def get_ai_analysis(data):
+
+    global AI_CACHE
+    global AI_CACHE_TIME
+
+    # ---------------------------------------------
+    # Use cached AI result for 10 minutes
+    # ---------------------------------------------
+
+    now = time.time()
+
+    if AI_CACHE:
+
+        if now - AI_CACHE_TIME < AI_CACHE_SECONDS:
+
+            return AI_CACHE
+
+
+    # ---------------------------------------------
+    # OpenAI API Key
+    # ---------------------------------------------
 
     api_key = os.getenv(
         "OPENAI_API_KEY"
@@ -478,6 +510,10 @@ def get_ai_analysis(data):
         api_key=api_key
     )
 
+
+    # ---------------------------------------------
+    # AI Prompt
+    # ---------------------------------------------
 
     prompt = f"""
 You are a BTC/USDT trading scanner assistant.
@@ -543,6 +579,10 @@ Keep the answer concise and practical.
 """
 
 
+    # ---------------------------------------------
+    # OpenAI Request
+    # ---------------------------------------------
+
     try:
 
         response = client.responses.create(
@@ -553,433 +593,24 @@ Keep the answer concise and practical.
 
         )
 
-        return response.output_text
+        result = response.output_text
+
+
+        # -----------------------------------------
+        # Save result to cache
+        # -----------------------------------------
+
+        AI_CACHE = result
+
+        AI_CACHE_TIME = time.time()
+
+
+        return result
 
 
     except Exception as e:
 
         return (
-            f"AI analysis error: "
-            f"{type(e).__name__}: {e}"
+            f"AI analysis temporarily unavailable: "
+            f"{type(e).__name__}"
         )
-
-
-# =========================================================
-# HTML DASHBOARD
-# =========================================================
-
-HTML = """
-
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1">
-
-<title>BTC AI Scanner</title>
-
-
-<style>
-
-body {
-
-    margin: 0;
-
-    background: #0b0f19;
-
-    color: white;
-
-    font-family: Arial, sans-serif;
-
-}
-
-
-.container {
-
-    max-width: 1000px;
-
-    margin: auto;
-
-    padding: 25px;
-
-}
-
-
-.card {
-
-    background: #151a27;
-
-    border: 1px solid #303747;
-
-    border-radius: 14px;
-
-    padding: 22px;
-
-    margin-top: 18px;
-
-}
-
-
-.signal {
-
-    font-size: 32px;
-
-    font-weight: bold;
-
-    margin: 15px 0;
-
-}
-
-
-.ai {
-
-    margin-top: 20px;
-
-    background: #151a27;
-
-    border: 1px solid #303747;
-
-    border-radius: 14px;
-
-    padding: 25px;
-
-}
-
-
-.ai-analysis {
-
-    background: #0b0f19;
-
-    border: 1px solid #303747;
-
-    border-radius: 12px;
-
-    padding: 20px;
-
-    margin-top: 15px;
-
-    line-height: 1.9;
-
-    white-space: pre-wrap;
-
-    overflow-wrap: break-word;
-
-}
-
-
-button {
-
-    margin-top: 20px;
-
-    padding: 12px 20px;
-
-    border: 0;
-
-    border-radius: 10px;
-
-    cursor: pointer;
-
-    font-size: 16px;
-
-}
-
-
-</style>
-
-</head>
-
-
-<body>
-
-
-<div class="container">
-
-
-<h1>₿ BTC/USDT AI Scanner</h1>
-
-
-<div class="card">
-
-<h2>Market</h2>
-
-
-<p>
-
-Price:
-
-<b>
-
-${{ "%.2f"|format(price) }}
-
-</b>
-
-</p>
-
-
-<p>
-
-1H Trend:
-
-<b>
-
-{{ trend }}
-
-</b>
-
-</p>
-
-
-<p>
-
-MA10:
-
-{{ "%.2f"|format(ma10) }}
-
-</p>
-
-
-<p>
-
-MA30:
-
-{{ "%.2f"|format(ma30) }}
-
-</p>
-
-
-<p>
-
-MA60:
-
-{{ "%.2f"|format(ma60) }}
-
-</p>
-
-
-</div>
-
-
-<div class="card">
-
-
-<h2>Support / Resistance</h2>
-
-
-<p>
-
-Support:
-
-{{ "%.2f"|format(support) }}
-
-</p>
-
-
-<p>
-
-Resistance:
-
-{{ "%.2f"|format(resistance) }}
-
-</p>
-
-
-</div>
-
-
-<div class="card">
-
-
-<h2>5M Confirmation</h2>
-
-
-<p>
-
-RSI:
-
-{{ "%.2f"|format(rsi) }}
-
-</p>
-
-
-<p>
-
-Volume:
-
-{{ volume_status }}
-
-</p>
-
-
-<p>
-
-Momentum:
-
-{{ momentum }}
-
-</p>
-
-
-<p>
-
-Long Confirmation:
-
-{{ long_confirmation }}
-
-</p>
-
-
-<p>
-
-Short Confirmation:
-
-{{ short_confirmation }}
-
-</p>
-
-
-</div>
-
-
-<div class="card">
-
-
-<h2>🤖 SCANNER SIGNAL</h2>
-
-
-<div class="signal">
-
-{{ signal }}
-
-</div>
-
-
-<p>
-
-{{ reason }}
-
-</p>
-
-
-</div>
-
-
-<div class="ai">
-
-
-<h2>🤖 AI ANALYSIS</h2>
-
-
-<div class="ai-analysis">
-
-{{ ai_analysis }}
-
-</div>
-
-
-<button onclick="location.reload()">
-
-🔄 SCAN AGAIN
-
-</button>
-
-
-</div>
-
-
-</div>
-
-
-</body>
-
-</html>
-
-"""
-
-
-# =========================================================
-# HOME PAGE
-# =========================================================
-
-@app.route("/")
-def home():
-
-    data = run_scanner()
-
-    ai_analysis = get_ai_analysis(
-        data
-    )
-
-
-    return render_template_string(
-
-        HTML,
-
-        price=data["price"],
-
-        trend=data["trend"],
-
-        ma10=data["ma10"],
-
-        ma30=data["ma30"],
-
-        ma60=data["ma60"],
-
-        support=data["support"],
-
-        resistance=data["resistance"],
-
-        rsi=data["rsi"],
-
-        volume_status=data[
-            "volume_status"
-        ],
-
-        momentum=data[
-            "momentum"
-        ],
-
-        long_confirmation=data[
-            "long_confirmation"
-        ],
-
-        short_confirmation=data[
-            "short_confirmation"
-        ],
-
-        signal=data[
-            "signal"
-        ],
-
-        reason=data[
-            "reason"
-        ],
-
-        ai_analysis=ai_analysis
-
-    )
-
-
-# =========================================================
-# START SERVER
-# =========================================================
-
-if __name__ == "__main__":
-
-    port = int(
-        os.environ.get(
-            "PORT",
-            10000
-        )
-    )
-
-
-    app.run(
-
-        host="0.0.0.0",
-
-        port=port
-
-    )
