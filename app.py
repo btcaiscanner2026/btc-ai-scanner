@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import pandas as pd
 
@@ -7,6 +8,11 @@ from openai import OpenAI
 
 
 app = Flask(__name__)
+
+
+# =========================================================
+# SETTINGS
+# =========================================================
 
 SYMBOL = "BTCUSDT"
 
@@ -179,24 +185,16 @@ def run_scanner():
 
 
     support_hold = (
-
         last15["low"] <= support_15 * 1.002
-
         and
-
         last15["close"] > last15["open"]
-
     )
 
 
     resistance_rejection = (
-
         last15["high"] >= resistance_15 * 0.998
-
         and
-
         last15["close"] < last15["open"]
-
     )
 
 
@@ -273,32 +271,20 @@ def run_scanner():
 
 
     long_confirmation = (
-
         last5["close"] > last5["open"]
-
         and
-
         momentum == "BULLISH"
-
         and
-
         current_rsi > 50
-
     )
 
 
     short_confirmation = (
-
         last5["close"] < last5["open"]
-
         and
-
         momentum == "BEARISH"
-
         and
-
         current_rsi < 50
-
     )
 
 
@@ -350,8 +336,10 @@ def run_scanner():
 
     if (
         trend == "BULLISH"
-        and long_confirmation
-        and support_hold
+        and
+        long_confirmation
+        and
+        support_hold
     ):
 
         signal = "LONG 🟢"
@@ -365,8 +353,10 @@ def run_scanner():
 
     elif (
         trend == "BEARISH"
-        and short_confirmation
-        and resistance_rejection
+        and
+        short_confirmation
+        and
+        resistance_rejection
     ):
 
         signal = "SHORT 🔴"
@@ -452,36 +442,36 @@ def run_scanner():
 
         "reason":
             reason
-
     }
+
+
+# =========================================================
+# AI ANALYSIS CACHE
+# =========================================================
+
+AI_CACHE = ""
+
+AI_CACHE_TIME = 0
+
+AI_CACHE_SECONDS = 600
 
 
 # =========================================================
 # OPENAI AI ANALYSIS
 # =========================================================
 
-# =========================================================
-# AI ANALYSIS CACHE
-# =========================================================
-
-import time
-
-AI_CACHE = ""
-AI_CACHE_TIME = 0
-
-AI_CACHE_SECONDS = 600
-
-
 def get_ai_analysis(data):
 
     global AI_CACHE
     global AI_CACHE_TIME
 
-    # ---------------------------------------------
-    # Use cached AI result for 10 minutes
-    # ---------------------------------------------
+
+    # -----------------------------------------------------
+    # USE CACHE FOR 10 MINUTES
+    # -----------------------------------------------------
 
     now = time.time()
+
 
     if AI_CACHE:
 
@@ -490,9 +480,9 @@ def get_ai_analysis(data):
             return AI_CACHE
 
 
-    # ---------------------------------------------
-    # OpenAI API Key
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # OPENAI API KEY
+    # -----------------------------------------------------
 
     api_key = os.getenv(
         "OPENAI_API_KEY"
@@ -511,9 +501,9 @@ def get_ai_analysis(data):
     )
 
 
-    # ---------------------------------------------
-    # AI Prompt
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # AI PROMPT
+    # -----------------------------------------------------
 
     prompt = f"""
 You are a BTC/USDT trading scanner assistant.
@@ -579,9 +569,9 @@ Keep the answer concise and practical.
 """
 
 
-    # ---------------------------------------------
-    # OpenAI Request
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # OPENAI REQUEST
+    # -----------------------------------------------------
 
     try:
 
@@ -593,12 +583,13 @@ Keep the answer concise and practical.
 
         )
 
+
         result = response.output_text
 
 
-        # -----------------------------------------
-        # Save result to cache
-        # -----------------------------------------
+        # -------------------------------------------------
+        # SAVE SUCCESSFUL RESULT TO CACHE
+        # -------------------------------------------------
 
         AI_CACHE = result
 
@@ -610,7 +601,320 @@ Keep the answer concise and practical.
 
     except Exception as e:
 
+        # If an API error happens, show a simple message
+        # instead of exposing the full error.
+
         return (
-            f"AI analysis temporarily unavailable: "
+            "AI analysis temporarily unavailable: "
             f"{type(e).__name__}"
         )
+
+
+# =========================================================
+# HTML
+# =========================================================
+
+HTML = """
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>BTC AI Scanner</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .card {
+            background: #1d1d1d;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .signal {
+            font-size: 30px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .ai {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .refresh {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 8px;
+            background: #333;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .refresh:hover {
+            background: #444;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>₿ BTC / USDT AI Scanner</h1>
+
+
+    <div class="card">
+
+        <div class="row">
+            <span>Price</span>
+            <span>
+                ${{ "%.2f"|format(price) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>1H Trend</span>
+            <span>{{ trend }}</span>
+        </div>
+
+
+        <div class="row">
+            <span>MA10</span>
+            <span>
+                {{ "%.2f"|format(ma10) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>MA30</span>
+            <span>
+                {{ "%.2f"|format(ma30) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>MA60</span>
+            <span>
+                {{ "%.2f"|format(ma60) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>Support</span>
+            <span>
+                {{ "%.2f"|format(support) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>Resistance</span>
+            <span>
+                {{ "%.2f"|format(resistance) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>RSI</span>
+            <span>
+                {{ "%.2f"|format(rsi) }}
+            </span>
+        </div>
+
+
+        <div class="row">
+            <span>Volume</span>
+            <span>{{ volume_status }}</span>
+        </div>
+
+
+        <div class="row">
+            <span>Momentum</span>
+            <span>{{ momentum }}</span>
+        </div>
+
+
+        <div class="row">
+            <span>Long Confirmation</span>
+            <span>{{ long_confirmation }}</span>
+        </div>
+
+
+        <div class="row">
+            <span>Short Confirmation</span>
+            <span>{{ short_confirmation }}</span>
+        </div>
+
+
+        <div class="row">
+            <span>Funding Rate</span>
+            <span>
+                {{ "%.4f"|format(funding_percent) }}%
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="signal">
+
+            {{ signal }}
+
+        </div>
+
+
+        <p>
+            <strong>Reason:</strong>
+        </p>
+
+        <p>
+            {{ reason }}
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>🤖 AI Analysis</h2>
+
+        <div class="ai">
+            {{ ai_analysis }}
+        </div>
+
+    </div>
+
+
+    <button
+        class="refresh"
+        onclick="location.reload()">
+
+        🔄 Refresh Scanner
+
+    </button>
+
+
+</div>
+
+</body>
+
+</html>
+
+"""
+
+
+# =========================================================
+# ROUTE
+# =========================================================
+
+@app.route("/")
+def home():
+
+    data = run_scanner()
+
+    ai_analysis = get_ai_analysis(data)
+
+
+    return render_template_string(
+
+        HTML,
+
+        price=data["price"],
+
+        trend=data["trend"],
+
+        ma10=data["ma10"],
+
+        ma30=data["ma30"],
+
+        ma60=data["ma60"],
+
+        support=data["support"],
+
+        resistance=data["resistance"],
+
+        rsi=data["rsi"],
+
+        volume_status=data["volume_status"],
+
+        momentum=data["momentum"],
+
+        long_confirmation=
+            data["long_confirmation"],
+
+        short_confirmation=
+            data["short_confirmation"],
+
+        funding_percent=
+            data["funding_percent"],
+
+        signal=data["signal"],
+
+        reason=data["reason"],
+
+        ai_analysis=ai_analysis
+
+    )
+
+
+# =========================================================
+# RUN
+# =========================================================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        )
+    )
